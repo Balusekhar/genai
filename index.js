@@ -9,6 +9,14 @@ const openai = new OpenAI({
   // baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
 });
 
+async function getWeatherDetails(cityName) {
+  console.log("🔍 getWeatherDetails");
+  const response = await axios.get(
+    `http://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${process.env.OPEN_WEATHER_API_KEY}&units=metric`
+  );
+  return response.data.main.temp;
+}
+
 const SYSTEM_PROMPT = `
 You are an AI similar to Chatgpt, gemini and claude. But you should answer in the below format only.
 You should always follow START, THINK, OUTPUT format. and if you have acces to tools which can be used to get specific answer. This tools are used only for specific set of question.
@@ -90,7 +98,7 @@ let messages = [
 async function main() {
   while (true) {
     const response = await openai.chat.completions.create({
-      model: "gpt-4.1",
+      model: "gpt-4o",
       messages: messages,
     });
 
@@ -146,15 +154,9 @@ async function main() {
   }
 }
 
-async function getWeatherDetails(cityName) {
-  console.log("🔍 getWeatherDetails");
-  const response = await axios.get(
-    `http://api.openweathermap.org/data/2.5/weather?q=${cityName}&appid=${API_KEY}&units=metric`
-  );
-  return response.data.main.temp;
-}
 
-main();
 
-// const response = await getWeatherDetails("Denton");
-// console.log("🔍 response", response);
+// main();
+
+const response = await getWeatherDetails("Denton");
+console.log("🔍 response", response);
