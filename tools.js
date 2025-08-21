@@ -1,93 +1,97 @@
 import dotenv from "dotenv";
 dotenv.config();
 import OpenAI from "openai";
+import { exec } from "child_process";
 
 const openAi = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 // Define the actual tool function
-async function getWeatherDetails(city) {
-  // This is a mock implementation - in a real app, you'd call a weather API
-  console.log(`Getting weather for ${city}...`);
-  return {
-    city: city,
-    temperature: "72°F",
-    condition: "Sunny",
-    humidity: "45%",
-  };
+async function executeCommand(cmd = "") {
+  return new Promise((res, rej) => {
+    exec(cmd, (error, data) => {
+      if (error) {
+        return res(`Error running command ${error}`);
+      } else {
+        res(data);
+      }
+    });
+  });
 }
 
 const messages = [
   {
     role: "system",
-    content:
-      "You are a helpful assistant that can answer questions about the weather.",
+    content: "You are a helpful assistant similar to ChatGPT, Claude etc",
   },
   {
     role: "user",
-    content: "What is the weather in Denton?",
+    content:
+      "Based on my git repo, can you add untracked files to the staging area and commit them with a message 'This commit is made by AI Agent'",
   },
 ];
 
+
 async function main() {
   try {
-    const response = await openAi.chat.completions.create({
-      model: "gpt-5",
-      messages: messages,
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: "getWeatherDetails",
-            description: "Get today's weather details for a city.",
-            parameters: {
-              type: "object",
-              properties: {
-                city: {
-                  type: "string",
-                  description: "A city name",
+    while (true) {
+      const response = await openAi.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages,
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "executeCommand",
+              description: "Execute a command on the system.",
+              parameters: {
+                type: "object",
+                properties: {
+                  command: {
+                    type: "string",
+                    description: "A command to execute on the system",
+                  },
                 },
+                required: ["command"],
               },
-              required: ["city"],
             },
           },
-        },
-      ],
-    });
-
-    const responseMessage = response.choices[0].message;
-    console.log(JSON.stringify(responseMessage, null, 2));
-
-    // Check if the AI wants to call a tool
-    if (responseMessage.tool_calls) {
-      // Add the assistant's message to the conversation
-      messages.push(responseMessage);
-
-      // Execute each tool call
-      for (const toolCall of responseMessage.tool_calls) {
-        if (toolCall.function.name === "getWeatherDetails") {
-          const args = JSON.parse(toolCall.function.arguments);
-          const weatherData = await getWeatherDetails(args.city);
-
-          // Add the tool result to the conversation
-          messages.push({
-            tool_call_id: toolCall.id,
-            role: "tool",
-            content: JSON.stringify(weatherData),
-          });
-        }
-      }
-
-      // Get the final response from the AI
-      const finalResponse = await openAi.chat.completions.create({
-        model: "gpt-4o",
-        messages: messages,
+        ],
       });
 
-      console.log("Final response:", finalResponse.choices[0].message.content);
-    } else {
-      console.log("Response:", responseMessage.content);
+      const responseMessage = response.choices[0].message;
+      console.log(
+        "responseMessage 😇😇😇",
+        JSON.stringify(responseMessage, null, 2)
+      );
+
+      // Add the assistant's response to the conversation
+      messages.push(responseMessage);
+
+      if (responseMessage.tool_calls) {
+        // Handle multiple tool calls
+        for (const toolCall of responseMessage.tool_calls) {
+          if (toolCall.function.name === "executeCommand") {
+            const args = JSON.parse(toolCall.function.arguments);
+
+            const result = await executeCommand(args.command);
+            console.log("result 🔥🔥🔥", result);
+
+            messages.push({
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: result,
+            });
+          }
+        }
+      } else {
+        // Assistant gave final text/code answer
+        if (responseMessage.content) {
+          console.log("Assistant Response:\n", responseMessage.content);
+        }
+        break;
+      }
     }
   } catch (error) {
     console.error("Error:", error);

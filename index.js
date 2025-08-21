@@ -158,5 +158,5 @@ async function main() {
 
 // main();
 
-const response = await getWeatherDetails("Denton");
-console.log("🔍 response", response);
+// const response = await getWeatherDetails("Denton");
+// console.log("🔍 response", response);
